@@ -1,0 +1,488 @@
+---
+title: "2026 Plano de Actividades (MEC)"
+format:
+  dashboard:
+    theme: cosmo
+    orientation: rows
+server: shiny
+---
+
+<style>
+
+.card-header {
+  font-weight: 500;
+  font-size: 21px;
+  color: #333333;
+}
+
+/* Value box values (your textOutputs) */
+.bslib-value-box .shiny-text-output {
+  font-size: 21px !important;
+  font-weight: 400 !important;
+}
+
+/* Or target by specific IDs */
+#kpi_budget, #kpi_accoes, #kpi_activities, #kpi_subactivities {
+  font-size: 21px !important;
+  font-weight: 400 !important;
+}
+
+.bslib-value-box .value-box-showcase {
+  width: 80px !important;
+  min-width: 80px !important;
+  padding: 0.5rem !important;
+  display: flex !important;
+  align-items: flex-end !important;
+  justify-content: center !important;
+}
+
+.bslib-value-box .value-box-showcase i,
+.bslib-value-box .value-box-showcase .bi {
+  font-size: 36px !important;
+}
+
+.bslib-value-box,
+.bslib-value-box .value-box-area,
+.bslib-value-box .value-box-showcase,
+.bslib-value-box .value-box-grid {
+  background-color: #f9f9f9 !important;
+  color: #373A3C !important;
+}
+
+/* Remove padding from value box paragraphs */
+.bslib-value-box .value-box-area p {
+  margin: 0 !important;
+  padding: 0 !important;
+  line-height: 1.2 !important;
+}
+
+.bslib-value-box .value-box-area .cell {
+  margin: 0 !important;
+  padding: 0 !important;
+}
+
+.bslib-value-box .value-box-area .cell-output-display {
+  margin: 0 !important;
+  padding: 0 !important;
+}
+
+.bslib-value-box .value-box-area {
+  gap: 2px !important;
+  padding: 0.5rem !important;
+}
+
+/* Make DT table text smaller */
+.dataTables_wrapper table.dataTable {
+  font-size: 11px;
+}
+
+.dt-button {
+  font-size: 11px !important;
+  padding: 3px 12px !important;
+}
+
+/* Optional: shrink the filter row + pagination text too */
+.dataTables_wrapper .dataTables_filter,
+.dataTables_wrapper .dataTables_length,
+.dataTables_wrapper .dataTables_info,
+.dataTables_wrapper .dataTables_paginate {
+  font-size: 11px;
+}
+</style>
+
+```{r load-dependencies}
+#| context: setup
+library(shiny)
+library(tidyverse)
+library(janitor)
+library(readxl)
+library(gt)
+library(DT)
+library(bslib)
+
+df <- read_excel(
+  "data/1. PdA2026-VF-22Dec2025.xlsx",
+  sheet = "PdA Fonte",
+  skip = 2
+) %>%
+  clean_names() %>%
+  mutate(
+    resp = str_to_upper(resp),
+    fr = str_to_upper(fr)
+  )
+
+prov_order <- c(
+  "Órgão Central",
+  "Niassa",
+  "Cabo Delgado",
+  "Nampula",
+  "Zambézia",
+  "Tete",
+  "Manica",
+  "Sofala",
+  "Inhambane",
+  "Gaza",
+  "Maputo Prov",
+  "Cidade Maputo"
+)
+
+
+```
+
+# Filters {.sidebar}
+```{r define-filters}
+
+selectInput(
+  "provincia_filter", "Província",
+  choices = c(
+    intersect(prov_order, unique(df$provincia)),
+    setdiff(unique(df$provincia), prov_order)
+  ),
+  selected = NULL,
+  multiple = TRUE
+)
+
+selectInput(
+  "programa_filter", "Programa",
+  choices = sort(unique(df$programa)),
+  selected = NULL,
+  multiple = TRUE
+)
+
+selectInput(
+  "fr_filter", "Fonte de Financiamento",
+  choices = sort(unique(df$fr)),
+  selected = NULL,
+  multiple = TRUE
+)
+
+selectInput(
+  "resp_filter", "Responsável",
+  choices = sort(unique(df$resp)),
+  selected = NULL,
+  multiple = TRUE
+)
+
+selectInput(
+  "dimension_filter", "Desagregar por",
+  choices = c(
+    "Tipo de Custo" = "cost_type",
+    "Província" = "provincia",
+    "Programa" = "programa",
+    "Fonte de Financiamento" = "fr",
+    "Responsável" = "resp"
+  ),
+  selected = "cost_type"
+)
+
+conditionalPanel(
+  condition = "input.dimension_filter == 'fr' || input.dimension_filter == 'resp'",
+  sliderInput(
+    "lump_n", "Número de categorias",
+    min = 10, max = 30, value = 10, step = 1
+  )
+)
+
+```
+
+
+# Resumo Orçamental
+## Row 1 {height="15%"}
+::: {.valuebox title="Orçamento" icon="currency-dollar"}
+```{r}
+textOutput("kpi_budget")
+```
+:::
+
+::: {.valuebox title="Acções" icon="folder"}
+```{r}
+textOutput("kpi_accoes")
+```
+:::
+
+::: {.valuebox title="Actividades" icon="list-task"}
+```{r}
+textOutput("kpi_activities")
+```
+:::
+
+::: {.valuebox title="Subactividades" icon="list-nested"}
+```{r}
+textOutput("kpi_subactivities")
+```
+:::
+
+## Row 2 {height="85%"}
+::: {.card title="Orçamento por Tipo" width="35%"}
+```{r output-plot}
+plotOutput("cost_plot", height = 420)
+```
+:::
+
+::: {.card title="Lista de Subactividades" width="65%"}
+```{r output-table}
+DTOutput("activities_table")
+```
+:::
+
+
+# Calendário de Implementação
+## Row 1 {height="15%"}
+::: {.valuebox title="Orçamento" icon="currency-dollar"}
+```{r}
+textOutput("kpi_budget_cal")
+```
+:::
+
+::: {.valuebox title="Acções" icon="folder"}
+```{r}
+textOutput("kpi_accoes_cal")
+```
+:::
+
+::: {.valuebox title="Actividades" icon="list-task"}
+```{r}
+textOutput("kpi_activities_cal")
+```
+:::
+
+::: {.valuebox title="Subactividades" icon="list-nested"}
+```{r}
+textOutput("kpi_subactivities_cal")
+```
+:::
+## Row 2
+
+::: {.card title="Subactividades por Mês" width="35%"}
+```{r}
+plotOutput("monthly_activity_plot", height = 280)
+```
+:::
+
+::: {.card title="Orçamento por Mês" width="35%"}
+```{r}
+plotOutput("monthly_budget_plot")
+```
+:::
+
+
+
+
+
+
+
+
+```{r define-server-logic}
+#| context: server
+
+filtered_data <- reactive({
+  data <- df
+
+  if (length(input$provincia_filter) > 0) {
+    data <- data %>% dplyr::filter(provincia %in% input$provincia_filter)
+  }
+  if (length(input$programa_filter) > 0) {
+    data <- data %>% dplyr::filter(programa %in% input$programa_filter)
+  }
+  if (length(input$fr_filter) > 0) {
+    data <- data %>% dplyr::filter(fr %in% input$fr_filter)
+  }
+  if (length(input$resp_filter) > 0) {
+    data <- data %>% dplyr::filter(resp %in% input$resp_filter)
+  }
+
+  data
+})
+
+activities_view <- reactive({
+  filtered_data() %>%
+    transmute(
+      Fonte          = fr,
+      Resp           = resp,
+      Provincia      = provincia,
+      Programa       = programa,
+      Subactividade  = sub_actividade,
+      Orçamento      = total
+    )
+})
+
+# ---- COST PLOT ----
+output$cost_plot <- renderPlot({
+  dim_choice <- input$dimension_filter
+
+  if (dim_choice == "cost_type") {
+    plot_data <- filtered_data() %>%
+      summarise(
+        `Salários e Remuneração` = sum(sal_rem, na.rm = TRUE),
+        `Ajustes de Custo (Int)` = sum(aju_custo_int, na.rm = TRUE),
+        `Ajustes de Custo (Ext)` = sum(aju_custo_ext, na.rm = TRUE),
+        `Bens` = sum(bens, na.rm = TRUE),
+        `Serviços` = sum(servicos, na.rm = TRUE),
+        `Outras Despesas` = sum(outras, na.rm = TRUE),
+        `Móvel e Equipamento` = sum(mob_equip, na.rm = TRUE),
+        `Construção` = sum(constr, na.rm = TRUE)
+      ) %>%
+      pivot_longer(everything(), names_to = "category", values_to = "amount")
+  } else {
+    plot_data <- filtered_data() %>%
+      group_by(category = .data[[dim_choice]]) %>%
+      summarise(amount = sum(total, na.rm = TRUE), .groups = "drop")
+
+    if (dim_choice %in% c("fr", "resp")) {
+      n_cats <- input$lump_n
+      plot_data <- plot_data %>%
+        mutate(category = fct_lump_n(category, n = n_cats, w = amount, other_level = "Outro")) %>%
+        group_by(category) %>%
+        summarise(amount = sum(amount), .groups = "drop")
+    }
+  }
+
+  plot_data <- plot_data %>%
+    arrange(desc(amount)) %>%
+    mutate(category = factor(category, levels = rev(category)))  # biggest at top
+
+  ggplot(plot_data, aes(x = category, y = amount)) +
+    geom_col(fill = "grey80") +
+    coord_flip() +
+    labs(x = "", y = "Valor (MT)") +
+    theme_minimal() +
+    theme(
+      plot.title = element_text(size = 18, face = "bold"),
+      axis.title.x = element_text(size = 14),
+      axis.title.y = element_text(size = 14),
+      axis.text.x = element_text(size = 12),
+      axis.text.y = element_text(size = 12)
+    ) +
+    scale_y_continuous(labels = scales::comma)
+})
+
+# ---- TABLE ----
+output$activities_table <- renderDT({
+  datatable(
+    activities_view(),
+    rownames = FALSE,
+    filter = "top",
+    class = "compact stripe",
+    extensions = c("Buttons", "Responsive"),
+    options = list(
+      pageLength = 15,
+      scrollX = TRUE,
+      dom = "Bfrtip",
+      buttons = c("excel", "csv"),
+      responsive = TRUE
+    )
+  )
+})
+
+# ---- KPI VALUES (reactives) ----
+kpi_budget_val <- reactive({
+  total <- sum(filtered_data()$total, na.rm = TRUE)
+  paste0(scales::comma(total, accuracy = 1), " MT")
+})
+
+kpi_accoes_val <- reactive({
+  dplyr::n_distinct(filtered_data()$accao)
+})
+
+kpi_activities_val <- reactive({
+  dplyr::n_distinct(filtered_data()$actividade)
+})
+
+kpi_subactivities_val <- reactive({
+  dplyr::n_distinct(filtered_data()$sub_actividade)
+})
+
+# ---- KPI OUTPUTS (Resumo Orçamental) ----
+output$kpi_budget <- renderText(kpi_budget_val())
+output$kpi_accoes <- renderText(kpi_accoes_val())
+output$kpi_activities <- renderText(kpi_activities_val())
+output$kpi_subactivities <- renderText(kpi_subactivities_val())
+
+# ---- KPI OUTPUTS (Calendário) ----
+output$kpi_budget_cal <- renderText(kpi_budget_val())
+output$kpi_accoes_cal <- renderText(kpi_accoes_val())
+output$kpi_activities_cal <- renderText(kpi_activities_val())
+output$kpi_subactivities_cal <- renderText(kpi_subactivities_val())
+
+
+# ---- CALENDAR / MONTH LOGIC ----
+activities_by_month <- reactive({
+  req(filtered_data())  # make sure reactive exists
+  dat <- filtered_data()
+  req(nrow(dat) > 0)    # avoid running when filters return 0 rows
+
+  # IMPORTANT: if `total` is an annual budget, summing it across active months
+  # will double-count. This allocates the budget evenly across the active months.
+  dat %>%
+    mutate(
+      n_meses = rowSums(as.data.frame(dplyr::across(jan:dez, ~ dplyr::coalesce(.x, FALSE))))
+    ) %>%
+    select(
+      provincia, programa, sub_actividade, total, n_meses,
+      jan, fev, mar, abr, mai, jun, jul, ago, set, out, nov, dez
+    ) %>%
+    pivot_longer(
+      cols = jan:dez,
+      names_to = "mes",
+      values_to = "activo"
+    ) %>%
+    mutate(activo = dplyr::coalesce(activo, FALSE)) %>%
+    filter(activo) %>%
+    mutate(
+      mes = factor(
+        mes,
+        levels = c("jan","fev","mar","abr","mai","jun","jul","ago","set","out","nov","dez"),
+        labels = c("Jan","Fev","Mar","Abr","Mai","Jun","Jul","Ago","Set","Out","Nov","Dez")
+      ),
+      # budget allocated per active month
+      orcamento_mes = dplyr::if_else(n_meses > 0, total / n_meses, 0)
+    )
+})
+
+monthly_counts <- reactive({
+  activities_by_month() %>%
+    count(mes, name = "n")
+})
+
+monthly_budget <- reactive({
+  activities_by_month() %>%
+    group_by(mes) %>%
+    summarise(orcamento = sum(orcamento_mes, na.rm = TRUE), .groups = "drop")
+})
+
+output$monthly_activity_plot <- renderPlot({
+  ggplot(monthly_counts(), aes(x = mes, y = n)) +
+    geom_col(fill = "grey80") +
+    labs(
+      x = "Mês",
+      y = "No. Subactividades"
+    ) +
+    theme_minimal() +
+    theme(
+      axis.title = element_text(size = 14),
+      axis.text  = element_text(size = 12)
+    )
+})
+
+output$monthly_budget_plot <- renderPlot({
+  ggplot(monthly_budget(), aes(x = mes, y = orcamento)) +
+    geom_col(fill = "grey80") +
+    labs(
+      x = "Mês",
+      y = "Orçamento (MT)",
+    ) +
+    scale_y_continuous(labels = scales::comma) +
+    theme_minimal() +
+    theme(
+      axis.title = element_text(size = 14),
+      axis.text  = element_text(size = 12)
+    )
+})
+
+
+```
+
+<!-- rsconnect::deployApp( -->
+<!--   appDir = "C:/Users/Joe/Documents/R/2026-MEC-PdA", -->
+<!--   appPrimaryDoc = "dashboard.qmd" -->
+<!-- ) -->
