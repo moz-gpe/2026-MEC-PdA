@@ -150,6 +150,20 @@ selectInput(
 )
 
 selectInput(
+  "sub_programa_filter", "Sub-programa",
+  choices = NULL,  # populated dynamically
+  selected = NULL,
+  multiple = TRUE
+)
+
+selectInput(
+  "accao_filter", "Acção",
+  choices = NULL,  # populated dynamically
+  selected = NULL,
+  multiple = TRUE
+)
+
+selectInput(
   "fr_filter", "Fonte de Financiamento",
   choices = sort(unique(df$fr)),
   selected = NULL,
@@ -213,7 +227,7 @@ textOutput("kpi_subactivities")
 :::
 
 ## Row 2 {height="85%"}
-::: {.card title="Orçamento por Tipo" width="35%"}
+::: {.card title="Orçamento Desagregado" width="35%"}
 ```{r output-plot}
 plotOutput("cost_plot", height = 420)
 ```
@@ -226,7 +240,7 @@ DTOutput("activities_table")
 :::
 
 
-# Calendário de Implementação
+# Cronograma
 ## Row 1 {height="15%"}
 ::: {.valuebox title="Orçamento" icon="currency-dollar"}
 ```{r}
@@ -284,6 +298,12 @@ filtered_data <- reactive({
   if (length(input$programa_filter) > 0) {
     data <- data %>% dplyr::filter(programa %in% input$programa_filter)
   }
+  if (length(input$sub_programa_filter) > 0) {
+    data <- data %>% dplyr::filter(sub_programa %in% input$sub_programa_filter)
+  }
+  if (length(input$accao_filter) > 0) {
+    data <- data %>% dplyr::filter(accao %in% input$accao_filter)
+  }
   if (length(input$fr_filter) > 0) {
     data <- data %>% dplyr::filter(fr %in% input$fr_filter)
   }
@@ -292,6 +312,111 @@ filtered_data <- reactive({
   }
 
   data
+})
+
+
+# ---- BIDIRECTIONAL CASCADING FILTERS ----
+
+# Helper: filter data by all selections EXCEPT the one we're updating
+filter_except <- function(data, exclude_filter) {
+  
+  if (exclude_filter != "provincia" && length(input$provincia_filter) > 0) {
+    data <- data %>% dplyr::filter(provincia %in% input$provincia_filter)
+  }
+  if (exclude_filter != "programa" && length(input$programa_filter) > 0) {
+    data <- data %>% dplyr::filter(programa %in% input$programa_filter)
+  }
+  if (exclude_filter != "sub_programa" && length(input$sub_programa_filter) > 0) {
+    data <- data %>% dplyr::filter(sub_programa %in% input$sub_programa_filter)
+  }
+  if (exclude_filter != "accao" && length(input$accao_filter) > 0) {
+    data <- data %>% dplyr::filter(accao %in% input$accao_filter)
+  }
+  if (exclude_filter != "fr" && length(input$fr_filter) > 0) {
+    data <- data %>% dplyr::filter(fr %in% input$fr_filter)
+  }
+  if (exclude_filter != "resp" && length(input$resp_filter) > 0) {
+    data <- data %>% dplyr::filter(resp %in% input$resp_filter)
+  }
+  
+  data
+}
+
+# Update Província
+observe({
+  data <- filter_except(df, "provincia")
+  
+  available <- unique(data$provincia)
+  choices <- c(
+    intersect(prov_order, available),
+    setdiff(available, prov_order)
+  )
+  
+  updateSelectInput(
+    session, "provincia_filter",
+    choices = choices,
+    selected = intersect(input$provincia_filter, choices)
+  )
+})
+
+# Update Programa
+observe({
+  data <- filter_except(df, "programa")
+  choices <- sort(unique(data$programa))
+  
+  updateSelectInput(
+    session, "programa_filter",
+    choices = choices,
+    selected = intersect(input$programa_filter, choices)
+  )
+})
+
+# Update Sub-programa
+observe({
+  data <- filter_except(df, "sub_programa")
+  choices <- sort(unique(data$sub_programa))
+  
+  updateSelectInput(
+    session, "sub_programa_filter",
+    choices = choices,
+    selected = intersect(input$sub_programa_filter, choices)
+  )
+})
+
+# Update Acção
+observe({
+  data <- filter_except(df, "accao")
+  choices <- sort(unique(data$accao))
+  
+  updateSelectInput(
+    session, "accao_filter",
+    choices = choices,
+    selected = intersect(input$accao_filter, choices)
+  )
+})
+
+# Update Fonte de Financiamento
+observe({
+  data <- filter_except(df, "fr")
+  choices <- sort(unique(data$fr))
+  
+  updateSelectInput(
+    session, "fr_filter",
+    choices = choices,
+    selected = intersect(input$fr_filter, choices)
+  )
+})
+
+# Update Responsável
+observe({
+  data <- filter_except(df, "resp")
+  choices <- sort(unique(data$resp))
+  
+  updateSelectInput(
+    session, "resp_filter",
+    choices = choices,
+    selected = intersect(input$resp_filter, choices)
+  )
 })
 
 activities_view <- reactive({
@@ -305,6 +430,8 @@ activities_view <- reactive({
       Orçamento      = total
     )
 })
+
+
 
 # ---- COST PLOT ----
 output$cost_plot <- renderPlot({
@@ -482,7 +609,7 @@ output$monthly_budget_plot <- renderPlot({
 
 ```
 
-<!-- rsconnect::deployApp( -->
-<!--   appDir = "C:/Users/Joe/Documents/R/2026-MEC-PdA", -->
-<!--   appPrimaryDoc = "dashboard.qmd" -->
-<!-- ) -->
+<!-- rsconnect::deployApp(
+  appDir = "C:/Users/Joe/Documents/R/2026-MEC-PdA",
+  appPrimaryDoc = "dashboard.qmd"
+) -->
