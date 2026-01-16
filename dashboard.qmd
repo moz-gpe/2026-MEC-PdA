@@ -7,6 +7,7 @@ format:
 server: shiny
 ---
 
+```{=html}
 <style>
 
 .card-header {
@@ -89,6 +90,7 @@ server: shiny
   font-size: 11px;
 }
 </style>
+```
 
 ```{r load-dependencies}
 #| context: setup
@@ -99,17 +101,10 @@ library(readxl)
 library(gt)
 library(DT)
 library(bslib)
+library(arrow)
 
-df <- read_excel(
-  "data/1. PdA2026-VF-22Dec2025.xlsx",
-  sheet = "PdA Fonte",
-  skip = 2
-) %>%
-  clean_names() %>%
-  mutate(
-    resp = str_to_upper(resp),
-    fr = str_to_upper(fr)
-  )
+bucket <- s3_bucket("giz-mec-data-joe", region = "eu-north-1")
+df <- read_parquet(bucket$path("pda.parquet"))
 
 prov_order <- c(
   "Órgão Central",
@@ -130,6 +125,7 @@ prov_order <- c(
 ```
 
 # Filters {.sidebar}
+
 ```{r define-filters}
 
 selectInput(
@@ -199,9 +195,10 @@ conditionalPanel(
 
 ```
 
-
 # Resumo Orçamental
+
 ## Row 1 {height="15%"}
+
 ::: {.valuebox title="Orçamento" icon="currency-dollar"}
 ```{r}
 textOutput("kpi_budget")
@@ -227,6 +224,7 @@ textOutput("kpi_subactivities")
 :::
 
 ## Row 2 {height="85%"}
+
 ::: {.card title="Orçamento Desagregado" width="35%"}
 ```{r output-plot}
 plotOutput("cost_plot", height = 420)
@@ -239,9 +237,10 @@ DTOutput("activities_table")
 ```
 :::
 
-
 # Cronograma
+
 ## Row 1 {height="15%"}
+
 ::: {.valuebox title="Orçamento" icon="currency-dollar"}
 ```{r}
 textOutput("kpi_budget_cal")
@@ -265,6 +264,7 @@ textOutput("kpi_activities_cal")
 textOutput("kpi_subactivities_cal")
 ```
 :::
+
 ## Row 2
 
 ::: {.card title="Subactividades por Mês" width="35%"}
@@ -278,13 +278,6 @@ plotOutput("monthly_activity_plot", height = 280)
 plotOutput("monthly_budget_plot")
 ```
 :::
-
-
-
-
-
-
-
 
 ```{r define-server-logic}
 #| context: server
@@ -609,7 +602,9 @@ output$monthly_budget_plot <- renderPlot({
 
 ```
 
+```{=html}
 <!-- rsconnect::deployApp(
   appDir = "C:/Users/Joe/Documents/R/2026-MEC-PdA",
   appPrimaryDoc = "dashboard.qmd"
 ) -->
+```
